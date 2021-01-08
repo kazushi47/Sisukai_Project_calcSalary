@@ -1,11 +1,12 @@
 import java.sql.Connection;
+import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -30,6 +31,8 @@ public class CalcSalary {
     private Connection connection = DBconnect.getConnection();
 
     /**
+     * 当クラスを使用するにはこのコンストラクタを使用しインスタンス化する必要がある。
+     * 
      * @param DIV_ID     給与計算対象部署ID
      * @param START_DATE 給与計算対象期間の開始日("yyyy-mm-dd"の形の文字列)
      * @param END_DATE   給与計算対象期間の終了日("yyyy-mm-dd"の形の文字列)
@@ -46,7 +49,7 @@ public class CalcSalary {
         Statement stForResults = connection.createStatement();
         ResultSet rsForResults = stForResults.executeQuery("select * from salarys");
         ResultSetMetaData meta = rsForResults.getMetaData();
-        for (int i = 1; i < meta.getColumnCount(); i++) {
+        for (int i = 1; i <= meta.getColumnCount(); i++) {
             result_params.add(meta.getColumnName(i));
         }
         rsForResults.close();
@@ -57,11 +60,17 @@ public class CalcSalary {
         psForEmpIds.setInt(1, this.DIV_ID);
         ResultSet rsForEmpIds = psForEmpIds.executeQuery();
         while (rsForEmpIds.next()) {
-            Map<String, Integer> work = new HashMap<>();
+            Map<String, Integer> work = new LinkedHashMap<>();
+
+            /* 計算結果のkey値をresult_paramsの値に設定 */
             result_params.forEach(s -> {
                 work.put(s, 0);
             });
+            /* 計算結果のkey値であるempIdに社員IDを設定 */
             work.put("empId", rsForEmpIds.getInt(1));
+            /* 計算結果のkey値であるdateは使用しないので削除する */
+            work.remove("date");
+
             results.add(work);
         }
         rsForEmpIds.close();
@@ -70,15 +79,18 @@ public class CalcSalary {
 
     /**
      * 対象部署・期間の給与計算を実行し、結果をデータベースに格納するにはこれを呼び出す。
+     * 
+     * @param isFirstCalc 最初の給与計算の場合はTrueに設定する。2回目以降の再計算の場合はFalseに設定する。
      * @throws Exception 計算処理やデータベース取得・登録時に発生する例外
      */
-    public void executeCalc() throws Exception {
+    public void executeCalc(boolean isFirstCalc) throws Exception {
         calculate();
-        postDatabase();
+        postDatabase(isFirstCalc);
     }
 
     /**
      * 対象部署・期間の給与計算を実行する。
+     * 
      * @throws Exception 計算処理時に発生する例外
      */
     public void calculate() throws Exception {
@@ -87,10 +99,48 @@ public class CalcSalary {
 
     /**
      * 計算結果をデータベースに格納する。
+     * 
+     * @param isFirstCalc 最初の給与計算の場合はTrueに設定する。2回目以降の再計算の場合はFalseに設定する。
      * @throws Exception データベース登録時に発生する例外
      */
-    public void postDatabase() throws Exception {
-        
+    public void postDatabase(boolean isFirstCalc) throws Exception {
+        /* Insertで初期化 */
+        if (isFirstCalc) {
+            PreparedStatement psForInsert = connection.prepareStatement("insert into salarys(empId, date) values(?, ?)");
+            results.forEach(result -> {
+                try {
+                    /* パラメータのクリア */
+                    psForInsert.clearParameters();
+                    /* パラメータの設定 */
+                    psForInsert.setInt(1, result.get("empId"));
+                    psForInsert.setDate(2, Date.valueOf(START_DATE));
+                    psForInsert.executeUpdate();
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+            });
+            psForInsert.close();
+        }
+        /* Updateで登録 */
+        results.forEach(result -> {
+            try {
+                for (Map.Entry<String, Integer> entry : result.entrySet()) {
+                    PreparedStatement psForUpdate = connection.prepareStatement("update salarys set " + entry.getKey() + " = ? where empId = ? and date = ?");
+                    
+                    /* パラメータのクリア */
+                    psForUpdate.clearParameters();
+                    /* パラメータの設定 */
+                    psForUpdate.setInt(1, entry.getValue());
+                    psForUpdate.setInt(2, result.get("empId"));
+                    psForUpdate.setDate(3, Date.valueOf(START_DATE));
+                    psForUpdate.executeUpdate();
+    
+                    psForUpdate.close();
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        });
     }
 
     @Override
