@@ -12,6 +12,9 @@ import java.util.Map;
 
 /**
  * 給与計算クラス
+ *
+ * 使用方法などの説明は以下のリンクから。
+ * https://github.com/kazushi47/Sisukai_Project_calcSalary
  * 
  * @since 2021/01/07
  * @version 1.0
