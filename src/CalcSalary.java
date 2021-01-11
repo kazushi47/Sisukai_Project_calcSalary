@@ -18,7 +18,7 @@ import java.util.Map;
  * 
  * @since 2021/01/07
  * @version 1.0
- * @author Kazushi Sugitani
+ * @author kazushi47
  */
 public class CalcSalary {
     /** 給与計算対象部署ID */
