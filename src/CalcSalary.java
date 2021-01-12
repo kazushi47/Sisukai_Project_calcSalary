@@ -581,26 +581,22 @@ public class CalcSalary {
      */
     public int calcNotWorkTime(int empId) throws SQLException {
         // TODO 非就業時間
-        PreparedStatement ps = connection.prepareStatement(
-            "select w1+ w2 "
-            + "from (select count(*) as w1 from attendances where empId = ? and absence = '〇' and date between ? and ?) t1, "
-            + "(select sum(iif(fix(datediff(\"n\", attendanceTime, #11:0:0#) / 30) / 2.0 > 2.75, 1, iif(fix(datediff(\"n\", attendanceTime, #11:0:0#) / 30) / 2.0 > 1.75, 0.5, 0)) + iif(fix(datediff(\"n\", #15:30:0#, "
-            + "leavingTime) / 30) / 2.0 > 2.75, 1, iif(fix(datediff(\"n\", #15:30:0#, leavingTime) / 30) / 2.0 > 1.75, 0.5, 0))) + fix(sum(iif(datediff(\"h\", attendanceTime, #11:0:0#) <= 1, 1, 0)) / 3) + "
-            + "fix(sum(iif(datediff(\"h\", #15:30:0#, leavingTime) <= 1, 1, 0)) / 3) as w2 from attendances where empId = ? and date between ? and ?) t2;"
-        );
-        ps.setInt(1, empId);
-        ps.setDate(2, Date.valueOf(START_DATE));
-        ps.setDate(3, Date.valueOf(END_DATE));
-        ps.setInt(4, empId);
-        ps.setDate(5, Date.valueOf(START_DATE));
-        ps.setDate(6, Date.valueOf(END_DATE));
-        ResultSet rs = ps.executeQuery();
+        // PreparedStatement ps = connection.prepareStatement(
+        //     "SELECT w1+w2 FROM (SELECT count(*) AS w1 FROM attendances WHERE empId = ? and absence = \"〇\" and paidHoliday = \"\" and specialHolidayType is null and [date] between ? and ?) AS t1, (SELECT sum(iif(fix(datediff(\"n\", attendanceTime, #11:0:0#)/30)/2.0>2.75, 1, iif(fix(datediff(\"n\", attendanceTime, #11:0:0#)/30)/2.0>1.75, 0.5, 0)) + iif(fix(datediff(\"n\", #15:30:0#, leavingTime)/30)/2.0>2.75, 1, iif(fix(datediff(\"n\", #15:30:0#, leavingTime)/30)/2.0>1.75, 0.5, 0))) + fix(sum(iif(datediff(\"h\", attendanceTime, #11:0:0#)<=1, 1, 0))/3) + fix(sum(iif(datediff(\"h\", #15:30:0#, leavingTime)<=1, 1, 0))/3) AS w2 FROM attendances WHERE empId = ? and paidHoliday = \"\" and specialHolidayType is null and [date] between ? and ?) AS t2"
+        // );
+        // ps.setInt(1, empId);
+        // ps.setDate(2, Date.valueOf(START_DATE));
+        // ps.setDate(3, Date.valueOf(END_DATE));
+        // ps.setInt(4, empId);
+        // ps.setDate(5, Date.valueOf(START_DATE));
+        // ps.setDate(6, Date.valueOf(END_DATE));
+        // ResultSet rs = ps.executeQuery();
         int notWorkTime = 0;
-        if (rs.next()) {
-            notWorkTime = rs.getInt(1);
-        }
-        rs.close();
-        ps.close();
+        // if (rs.next()) {
+        //     notWorkTime = rs.getInt(1);
+        // }
+        // rs.close();
+        // ps.close();
         return notWorkTime;
     }
 
