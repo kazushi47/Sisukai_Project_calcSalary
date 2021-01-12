@@ -477,8 +477,21 @@ public class CalcSalary {
      * @throws SQLException データベース取得時に発生する例外
      */
     public int calcOverWorkTime(int empId) throws SQLException {
-        // TODO 時間外勤務時数
-        return 0;
+        PreparedStatement ps = connection.prepareStatement(
+            "select iif(diff > 0, diff, 0) "
+            + "from (select sum(fix(datediff(\"n\", attendanceTime, leavingTime) / 30) / 2.0) - 157.5 as diff from attendances where empId = ? and date between ? and ? and attendanceTime is not null and leavingTime is not null)"
+        );
+        ps.setInt(1, empId);
+        ps.setDate(2, Date.valueOf(START_DATE));
+        ps.setDate(3, Date.valueOf(END_DATE));
+        ResultSet rs = ps.executeQuery();
+        int overWorkTime = 0;
+        if (rs.next()) {
+            overWorkTime = rs.getInt(1);
+        }
+        rs.close();
+        ps.close();
+        return overWorkTime;
     }
 
     /**
@@ -489,8 +502,23 @@ public class CalcSalary {
      * @throws SQLException データベース取得時に発生する例外
      */
     public int calcHolidayWorkTime(int empId) throws SQLException {
-        // TODO 休日勤務時数
-        return 0;
+        PreparedStatement ps = connection.prepareStatement(
+            "select fix(sum(iif(work >= 2.0, work, 0))) "
+            + "from (select fix(datediff(\"n\", attendanceTime, leavingTime) / 30) / 2.0 as work from attendances "
+            + "where (weekday(date) in(1, 7) or date in(select date from holidays) or format(date, \"mm/dd\") in(\"12/29\", \"12/30\", \"12/31\", \"01/01\", \"01/02\", \"01/03\", \"01/04\")) "
+            + "and empId = ? and date between ? and ? and attendanceTime is not null and leavingTime is not null)"
+        );
+        ps.setInt(1, empId);
+        ps.setDate(2, Date.valueOf(START_DATE));
+        ps.setDate(3, Date.valueOf(END_DATE));
+        ResultSet rs = ps.executeQuery();
+        int holidayWorkTime = 0;
+        if (rs.next()) {
+            holidayWorkTime = rs.getInt(1);
+        }
+        rs.close();
+        ps.close();
+        return holidayWorkTime;
     }
 
     /**
@@ -501,8 +529,22 @@ public class CalcSalary {
      * @throws SQLException データベース取得時に発生する例外
      */
     public int calcnightWorkTime(int empId) throws SQLException {
-        // TODO 深夜勤務時数
-        return 0;
+        PreparedStatement ps = connection.prepareStatement(
+            "select fix( "
+            + "sum(fix((iif(attendanceTime <= #4:30:0#, datediff(\"n\", attendanceTime, #5:0:0#), 0) + iif(leavingTime >= #22:30:0#, datediff(\"n\", #22:0:0#, leavingTime), 0) + iif(leavingTime <= #5:0:0#, datediff(\"n\", #0:0:0#, leavingTime), 0)) / 30) /2.0)) "
+            + "from attendances where empId = ? and date between ? and ? and attendanceTime is not null and leavingTime is not null"
+        );
+        ps.setInt(1, empId);
+        ps.setDate(2, Date.valueOf(START_DATE));
+        ps.setDate(3, Date.valueOf(END_DATE));
+        ResultSet rs = ps.executeQuery();
+        int nightWorkingTime = 0;
+        if (rs.next()) {
+            nightWorkingTime = rs.getInt(1);
+        }
+        rs.close();
+        ps.close();
+        return nightWorkingTime;
     }
 
     /**
@@ -513,8 +555,21 @@ public class CalcSalary {
      * @throws SQLException データベース取得時に発生する例外
      */
     public int calcTargetSpecialHolidays(int empId) throws SQLException {
-        // TODO 対象特別休暇日数
-        return 0;
+        PreparedStatement ps = connection.prepareStatement(
+            "select count(*) from attendances where specialHolidayType = \"臨時休業\" and empId = ? and date between ? and ?"
+        );
+        // 平均給与日額をセット
+        ps.setInt(1, empId);
+        ps.setDate(2, Date.valueOf(START_DATE));
+        ps.setDate(3, Date.valueOf(END_DATE));
+        ResultSet rs = ps.executeQuery();
+        int specialHolidays = 0;
+        if (rs.next()) {
+            specialHolidays = rs.getInt(1);
+        }
+        rs.close();
+        ps.close();
+        return specialHolidays;
     }
 
     /**
@@ -526,7 +581,27 @@ public class CalcSalary {
      */
     public int calcNotWorkTime(int empId) throws SQLException {
         // TODO 非就業時間
-        return 0;
+        PreparedStatement ps = connection.prepareStatement(
+            "select w1+ w2 "
+            + "from (select count(*) as w1 from attendances where empId = ? and absence = '〇' and date between ? and ?) t1, "
+            + "(select sum(iif(fix(datediff(\"n\", attendanceTime, #11:0:0#) / 30) / 2.0 > 2.75, 1, iif(fix(datediff(\"n\", attendanceTime, #11:0:0#) / 30) / 2.0 > 1.75, 0.5, 0)) + iif(fix(datediff(\"n\", #15:30:0#, "
+            + "leavingTime) / 30) / 2.0 > 2.75, 1, iif(fix(datediff(\"n\", #15:30:0#, leavingTime) / 30) / 2.0 > 1.75, 0.5, 0))) + fix(sum(iif(datediff(\"h\", attendanceTime, #11:0:0#) <= 1, 1, 0)) / 3) + "
+            + "fix(sum(iif(datediff(\"h\", #15:30:0#, leavingTime) <= 1, 1, 0)) / 3) as w2 from attendances where empId = ? and date between ? and ?) t2;"
+        );
+        ps.setInt(1, empId);
+        ps.setDate(2, Date.valueOf(START_DATE));
+        ps.setDate(3, Date.valueOf(END_DATE));
+        ps.setInt(4, empId);
+        ps.setDate(5, Date.valueOf(START_DATE));
+        ps.setDate(6, Date.valueOf(END_DATE));
+        ResultSet rs = ps.executeQuery();
+        int notWorkTime = 0;
+        if (rs.next()) {
+            notWorkTime = rs.getInt(1);
+        }
+        rs.close();
+        ps.close();
+        return notWorkTime;
     }
 
     /**
